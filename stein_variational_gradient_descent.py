@@ -40,14 +40,14 @@ class SteinVariationalGradientDescent:
         return particles
 
     def _functional_gradient(self, particles, n):  # phi^{\star}
-        kernel = self.kernel(particles).sum(1).unsqueeze(1)  # [n]
+        kernel = self.kernel(particles)  # [n,n]
         grad_kernel = self._grad(self.kernel)(particles)  # [n]
-        grad_logprob = self._grad(torch.log, self.target_dist)(particles)  # [n]
-        attractive = kernel * grad_logprob
+        grad_logprob = self._grad(torch.log, self.target_dist)(particles)  # [n] torch sums over columns
+        attractive = (kernel * grad_logprob).sum(1).unsqueeze(1)  # broadcast probs across rows
         repulsive = grad_kernel
         phi = attractive + repulsive
         phi[phi != phi] = 0
-        result = phi/n  # emperical average
+        result = phi / n  # emperical average
         return result
 
     @staticmethod
