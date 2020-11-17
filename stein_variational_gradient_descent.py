@@ -1,7 +1,8 @@
 import torch
 from functools import reduce
-import matplotlib.pyplot as plt
-import seaborn as sns
+
+
+from viz import plot_system
 
 
 class SteinVariationalGradientDescent:
@@ -24,6 +25,7 @@ class SteinVariationalGradientDescent:
         n = particles.shape[0]  # [n,..]
 
         gradient_history = torch.zeros((n, 1), dtype=torch.float)
+
         for step in range(self.num_steps):
             grad = self._functional_gradient(particles, n)
             gradient_history *= self.alpha
@@ -31,19 +33,15 @@ class SteinVariationalGradientDescent:
             rescale = 1 / torch.sqrt(gradient_history + self.fugdge_factor)
             particles += self.step_size * rescale * grad
             if self.viz and step % 10 == 0:
-                plt.clf()
-                sns.kdeplot(particles.squeeze().numpy())
-                # plt.hist(target, bins=50, density=True)
-                plt.show(block=False)
-                plt.pause(0.01)
+                plot_system(self.target_dist, particles, step)
 
         return particles
 
     def _functional_gradient(self, particles, n):  # phi^{\star}
-        kernel = self.kernel(particles)  # [n,n]
-        grad_kernel = self._grad(self.kernel)(particles)  # [n]
-        grad_logprob = self._grad(torch.log, self.target_dist)(particles)  # [n] torch sums over columns
-        attractive = (kernel * grad_logprob).sum(1).unsqueeze(1)  # broadcast probs across rows
+        kernel = self.kernel(particles)
+        grad_kernel = self._grad(self.kernel)(particles)
+        grad_logprob = self._grad(torch.log, self.target_dist)(particles)
+        attractive = (kernel * grad_logprob).sum(1).unsqueeze(1)
         repulsive = grad_kernel
         phi = attractive + repulsive
         phi[phi != phi] = 0
